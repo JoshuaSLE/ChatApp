@@ -12,9 +12,12 @@ use validator::ValidationErrors;
 pub enum AppError {
     #[error("Validation failed")]
     Validation(#[from] ValidationErrors),
-    
+
     #[error("Database error")]
     Database(#[from] sqlx::Error),
+
+    #[error("Cryptography error")]
+    Cryptography(#[from] argon2::password_hash::Error),
 }
 
 impl IntoResponse for AppError {
@@ -25,6 +28,12 @@ impl IntoResponse for AppError {
                 let body = Json(json!({ "errors": e.field_errors() }));
                 return (StatusCode::BAD_REQUEST, body).into_response();
             }
+
+            AppError::Cryptography(e) => {
+                warn!("Hashing error: {:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
+            }
+
             AppError::Database(e) => match e {
                 sqlx::Error::RowNotFound => {
                     warn!("Row not found");

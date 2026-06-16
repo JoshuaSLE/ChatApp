@@ -7,9 +7,9 @@ use crate::{
     AppState,
     errors::AppError,
     models::users::{RegisterUser, UserResponse},
+    utils::password_hash,
 };
 
-// TODO: password hashing
 pub async fn register(
     State(state): State<AppState>,
     Json(payload): Json<RegisterUser>,
@@ -17,6 +17,8 @@ pub async fn register(
     payload.validate()?;
 
     let id = Uuid::now_v7();
+
+    let password = password_hash(payload.password).await?;
 
     let row = query_as!(
         UserResponse,
@@ -27,12 +29,12 @@ pub async fn register(
         "#,
         id,
         payload.username,
-        payload.password,
+        password,
         payload.bio,
         payload.avatar
     )
     .fetch_one(&state.pool)
     .await?;
 
-    Ok((StatusCode::OK, Json(row)))
+    Ok((StatusCode::CREATED, Json(row)))
 }
