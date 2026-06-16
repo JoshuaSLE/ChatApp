@@ -1,0 +1,25 @@
+use serde::{Deserialize, Serialize};
+use validator::Validate;
+
+use crate::utils::{trimmed_option, trimmed_string};
+
+#[derive(Debug, Validate, Deserialize)]
+pub struct RegisterUser {
+    #[serde(deserialize_with = "trimmed_string")]
+    #[validate(length(min = 3, max = 30, message = "Username must be 3-30 characters"))]
+    pub username: String,
+
+    #[validate(length(min = 8, max = 30, message = "Password must be at least 8 characters"))]
+    pub password: String,
+
+    #[serde(deserialize_with = "trimmed_option")]
+    #[validate(length(max = 255, message = "Bio cannot exceed 255 characters"))]
+    pub bio: Option<String>,
+
+    pub avatar: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserResponse {
+    pub username: String,
+}

@@ -1,7 +1,6 @@
-use axum::{Json, Router, routing::get};
+use axum::Router;
 use dotenvy::dotenv;
-use serde::Serialize;
-use sqlx::{Pool, Postgres, migrate, postgres::PgPoolOptions};
+use sqlx::{PgPool, migrate, postgres::PgPoolOptions};
 use std::env;
 use tokio::{net::TcpListener, signal};
 use tracing::info;
@@ -9,18 +8,14 @@ use tracing_subscriber::EnvFilter;
 
 use crate::routes::app_routes;
 
+mod errors;
+mod models;
 mod routes;
+mod utils;
 
 #[derive(Clone)]
 pub struct AppState {
-    pool: Pool<Postgres>,
-}
-
-#[derive(Serialize)]
-struct AppInfo {
-    name: &'static str,
-    version: &'static str,
-    status: &'static str,
+    pool: PgPool,
 }
 
 #[tokio::main]
@@ -62,16 +57,6 @@ async fn main() {
     info!("Server is listening on http://{}", address);
 
     let app = Router::new()
-        .route(
-            "/",
-            get(|| async {
-                Json(AppInfo {
-                    name: env!("CARGO_PKG_NAME"),
-                    version: env!("CARGO_PKG_VERSION"),
-                    status: "healthy",
-                })
-            }),
-        )
         .merge(app_routes())
         .with_state(AppState { pool });
 
