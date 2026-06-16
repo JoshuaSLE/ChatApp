@@ -1,13 +1,13 @@
 use axum::{Json, extract::State, http::StatusCode};
-use sqlx::query_as;
+use sqlx::{query, query_as};
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
     AppState,
     errors::AppError,
-    models::users::{RegisterUser, UserResponse},
-    utils::password_hash,
+    models::users::{LoginUser, RegisterUser, UserResponse},
+    utils::{password_hash, password_verify},
 };
 
 pub async fn register(
@@ -37,4 +37,35 @@ pub async fn register(
     .await?;
 
     Ok((StatusCode::CREATED, Json(row)))
+}
+
+pub async fn login(
+    State(state): State<AppState>,
+    Json(payload): Json<LoginUser>,
+) -> Result<(StatusCode, Json<UserResponse>), AppError> {
+    payload.validate()?;
+
+    let user = query!(
+        r#"
+        SELECT password FROM users
+        WHERE username = $1
+        "#,
+        payload.username
+    )
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or(AppError::Unauthorized)?;
+
+    let is_valid = password_verify(payload.password, user.password).await?;
+
+    if !is_valid {
+        return Err(AppError::Unauthorized);
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(UserResponse {
+            username: payload.username,
+        }),
+    ))
 }

@@ -13,11 +13,14 @@ pub enum AppError {
     #[error("Validation failed")]
     Validation(#[from] ValidationErrors),
 
-    #[error("Database error")]
-    Database(#[from] sqlx::Error),
-
     #[error("Cryptography error")]
     Cryptography(#[from] argon2::password_hash::Error),
+
+    #[error("Unauthorized")]
+    Unauthorized,
+
+    #[error("Database error")]
+    Database(#[from] sqlx::Error),
 }
 
 impl IntoResponse for AppError {
@@ -33,6 +36,8 @@ impl IntoResponse for AppError {
                 warn!("Hashing error: {:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
+
+            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Invalid username or password"),
 
             AppError::Database(e) => match e {
                 sqlx::Error::RowNotFound => {

@@ -31,5 +31,7 @@ pub fn app_routes() -> Router<AppState> {
 }
 
 fn auth_routes() -> Router<AppState> {
-    Router::new().route("/register", post(auth::register))
+    Router::new()
+        .route("/register", post(auth::register))
+        .route("/login", post(auth::login))
 }
