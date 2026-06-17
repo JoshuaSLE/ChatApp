@@ -19,6 +19,15 @@ pub enum AppError {
     #[error("Unauthorized")]
     Unauthorized,
 
+    #[error("Invalid or expired token")]
+    InvalidToken,
+
+    #[error("Missing authorization credentials")]
+    MissingCredentials,
+
+    #[error("Token creation error")]
+    TokenCreation(#[from] jsonwebtoken::errors::Error),
+
     #[error("Database error")]
     Database(#[from] sqlx::Error),
 }
@@ -38,6 +47,15 @@ impl IntoResponse for AppError {
             }
 
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Invalid username or password"),
+
+            AppError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
+
+            AppError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),
+
+            AppError::TokenCreation(e) => {
+                tracing::error!("JWT creation failed: {:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
+            }
 
             AppError::Database(e) => match e {
                 sqlx::Error::RowNotFound => {

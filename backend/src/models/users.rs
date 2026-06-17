@@ -33,3 +33,8 @@ pub struct LoginUser {
     #[validate(length(min = 8, max = 30, message = "Password must be at least 8 characters"))]
     pub password: String,
 }
+
+#[derive(Serialize)]
+pub struct LoginResponse {
+    pub access_token: String,
+}
