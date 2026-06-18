@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use validator::Validate;
 
 use crate::utils::{trimmed_option, trimmed_string};
@@ -59,5 +60,14 @@ pub struct UpdateUser {
 pub struct UpdateUserResponse {
     pub username: String,
     pub bio: Option<String>,
+    pub avatar_key: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MeUserResponse {
+    pub username: String,
+    pub bio: Option<String>,
+    pub created_at: OffsetDateTime,
+    pub last_seen: Option<OffsetDateTime>,
     pub avatar_key: Option<String>,
 }

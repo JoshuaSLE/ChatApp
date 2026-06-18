@@ -15,7 +15,7 @@ use crate::{
     errors::AppError,
     models::{
         tokens::Claims,
-        users::{RegisterUser, UpdateUser, UpdateUserResponse, UserResponse},
+        users::{MeUserResponse, RegisterUser, UpdateUser, UpdateUserResponse, UserResponse},
     },
     utils::password_hash,
 };
@@ -109,4 +109,24 @@ pub async fn delete(State(state): State<AppState>, claims: Claims) -> Result<Res
     response.headers_mut().insert(SET_COOKIE, cookie_header);
 
     Ok(response)
+}
+
+pub async fn me(
+    State(state): State<AppState>,
+    claims: Claims,
+) -> Result<(StatusCode, Json<MeUserResponse>), AppError> {
+    let user_id = claims.sub;
+
+    let user = query_as!(
+        MeUserResponse,
+        r#"
+        SELECT username, bio, created_at, last_seen, avatar_key FROM users
+        WHERE id = $1
+        "#,
+        user_id
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    Ok((StatusCode::OK, Json(user)))
 }

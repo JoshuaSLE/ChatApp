@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(30) UNIQUE NOT NULL,
   password TEXT NOT NULL,
   bio VARCHAR(255),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_seen TIMESTAMPTZ,
   avatar_key TEXT
 );
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Rooms
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   name TEXT,
   created_by UUID REFERENCES users(id) ON DELETE SET NULL,
   is_direct BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Messages
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS messages (
   body TEXT,
   attachment_key TEXT,
   attachment_type TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Room members
