@@ -16,7 +16,10 @@ use validator::Validate;
 use crate::{
     AppState,
     errors::AppError,
-    models::users::{LoginUserResponse, LoginUser},
+    models::{
+        tokens::Claims,
+        users::{LoginUser, LoginUserResponse},
+    },
     tokens::generate_tokens,
     utils::{password_hash, password_verify},
 };
@@ -166,7 +169,13 @@ pub async fn refresh(State(state): State<AppState>, jar: CookieJar) -> Result<Re
     Ok(response)
 }
 
-pub async fn logout(State(state): State<AppState>, jar: CookieJar) -> Result<Response, AppError> {
+pub async fn logout(
+    State(state): State<AppState>,
+    claim: Claims,
+    jar: CookieJar,
+) -> Result<Response, AppError> {
+    let user_id = claim.sub;
+
     if let Some(selector) = jar
         .get("refresh_token")
         .and_then(|c| c.value().split_once(':'))
@@ -176,6 +185,18 @@ pub async fn logout(State(state): State<AppState>, jar: CookieJar) -> Result<Res
             .execute(&state.pool)
             .await;
     }
+
+    query!(
+        r#"
+        UPDATE users
+        SET last_seen = $1
+        WHERE id = $2
+        "#,
+        OffsetDateTime::now_utc(),
+        user_id,
+    )
+    .execute(&state.pool)
+    .await?;
 
     let removal_cookie = Cookie::build(("refresh_token", ""))
         .path("/auth")

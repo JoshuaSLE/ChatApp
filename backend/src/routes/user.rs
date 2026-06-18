@@ -1,5 +1,12 @@
-use axum::{Json, extract::State, http::StatusCode};
-use sqlx::query_as;
+use axum::{
+    Json,
+    extract::State,
+    http::{StatusCode, header::SET_COOKIE},
+    response::{IntoResponse, Response},
+};
+use axum_extra::extract::cookie::{Cookie, SameSite};
+use sqlx::{query, query_as};
+use time::Duration;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -76,4 +83,30 @@ pub async fn update(
     .await?;
 
     Ok((StatusCode::OK, Json(user)))
+}
+
+pub async fn delete(State(state): State<AppState>, claims: Claims) -> Result<Response, AppError> {
+    let user_id = claims.sub;
+
+    query!("DELETE FROM users WHERE id = $1", user_id)
+        .execute(&state.pool)
+        .await?;
+
+    let removal_cookie = Cookie::build(("refresh_token", ""))
+        .path("/auth")
+        .secure(true)
+        .http_only(true)
+        .same_site(SameSite::Strict)
+        .max_age(Duration::ZERO)
+        .build();
+
+    let mut response = StatusCode::NO_CONTENT.into_response();
+
+    let cookie_header = removal_cookie
+        .to_string()
+        .parse()
+        .map_err(|_| AppError::Internal)?;
+    response.headers_mut().insert(SET_COOKIE, cookie_header);
+
+    Ok(response)
 }

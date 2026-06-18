@@ -1,6 +1,6 @@
 use axum::{
     Json, Router,
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
 };
 use serde::Serialize;
 
@@ -43,4 +43,5 @@ fn user_routes() -> Router<AppState> {
     Router::new()
         .route("/register", post(user::register))
         .route("/update", patch(user::update))
+        .route("/delete", delete(user::delete))
 }
