@@ -6,4 +6,4 @@ DROP TABLE IF EXISTS refresh_tokens;
 DROP TABLE IF EXISTS users;
 
 -- Extensions
-DROP EXTENSION IF EXISTS pg_trgm;
+DROP EXTENSION IF EXISTS pg_trgm CASCADE;

@@ -34,4 +34,5 @@ fn auth_routes() -> Router<AppState> {
     Router::new()
         .route("/register", post(auth::register))
         .route("/login", post(auth::login))
+        .route("/refresh", post(auth::refresh))
 }

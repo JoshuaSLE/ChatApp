@@ -30,6 +30,9 @@ pub enum AppError {
 
     #[error("Database error")]
     Database(#[from] sqlx::Error),
+
+    #[error("Internal server error")]
+    Internal,
 }
 
 impl IntoResponse for AppError {
@@ -89,6 +92,11 @@ impl IntoResponse for AppError {
                     (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
                 }
             },
+
+            AppError::Internal => {
+                warn!("Internal server error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
+            }
         };
 
         let body = Json(json!({ "error": message }));
