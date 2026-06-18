@@ -8,7 +8,7 @@ use axum_extra::extract::{
     CookieJar,
     cookie::{Cookie, SameSite},
 };
-use sqlx::{query, query_as};
+use sqlx::query;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 use validator::Validate;
@@ -16,37 +16,10 @@ use validator::Validate;
 use crate::{
     AppState,
     errors::AppError,
-    models::users::{LoginResponse, LoginUser, RegisterUser, UserResponse},
+    models::users::{LoginResponse, LoginUser},
     tokens::generate_tokens,
     utils::{password_hash, password_verify},
 };
-
-pub async fn register(
-    State(state): State<AppState>,
-    Json(payload): Json<RegisterUser>,
-) -> Result<(StatusCode, Json<UserResponse>), AppError> {
-    payload.validate()?;
-
-    let password = password_hash(payload.password).await?;
-
-    let row = query_as!(
-        UserResponse,
-        r#"
-        INSERT INTO users (id, username, password, bio, avatar_key)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING username
-        "#,
-        Uuid::now_v7(),
-        payload.username,
-        password,
-        payload.bio,
-        payload.avatar
-    )
-    .fetch_one(&state.pool)
-    .await?;
-
-    Ok((StatusCode::CREATED, Json(row)))
-}
 
 pub async fn login(
     State(state): State<AppState>,
@@ -92,7 +65,7 @@ pub async fn login(
 
     let cookie_value = format!("{}:{}", token_selector, token_response.refresh_token);
     let cookie = Cookie::build(("refresh_token", cookie_value))
-        .path("/auth/refresh")
+        .path("/auth")
         .secure(true)
         .http_only(true)
         .same_site(SameSite::Strict)
@@ -172,7 +145,7 @@ pub async fn refresh(State(state): State<AppState>, jar: CookieJar) -> Result<Re
 
     let cookie_value = format!("{}:{}", new_selector, token_response.refresh_token);
     let cookie = Cookie::build(("refresh_token", cookie_value))
-        .path("/auth/refresh")
+        .path("/auth")
         .secure(true)
         .http_only(true)
         .same_site(SameSite::Strict)
@@ -188,6 +161,36 @@ pub async fn refresh(State(state): State<AppState>, jar: CookieJar) -> Result<Re
         .into_response();
 
     let cookie_header = cookie.to_string().parse().map_err(|_| AppError::Internal)?;
+    response.headers_mut().insert(SET_COOKIE, cookie_header);
+
+    Ok(response)
+}
+
+pub async fn logout(State(state): State<AppState>, jar: CookieJar) -> Result<Response, AppError> {
+    if let Some(selector) = jar
+        .get("refresh_token")
+        .and_then(|c| c.value().split_once(':'))
+        .and_then(|(sel, _)| uuid::Uuid::parse_str(sel).ok())
+    {
+        let _ = query!("DELETE FROM refresh_tokens WHERE id = $1", selector)
+            .execute(&state.pool)
+            .await;
+    }
+
+    let removal_cookie = Cookie::build(("refresh_token", ""))
+        .path("/auth")
+        .secure(true)
+        .http_only(true)
+        .same_site(SameSite::Strict)
+        .max_age(Duration::ZERO)
+        .build();
+
+    let mut response = StatusCode::OK.into_response();
+
+    let cookie_header = removal_cookie
+        .to_string()
+        .parse()
+        .map_err(|_| AppError::Internal)?;
     response.headers_mut().insert(SET_COOKIE, cookie_header);
 
     Ok(response)

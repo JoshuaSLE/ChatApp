@@ -7,6 +7,7 @@ use serde::Serialize;
 use crate::AppState;
 
 mod auth;
+mod user;
 
 #[derive(Serialize)]
 struct AppInfo {
@@ -28,11 +29,16 @@ pub fn app_routes() -> Router<AppState> {
             }),
         )
         .nest("/auth", auth_routes())
+        .nest("/user", user_routes())
 }
 
 fn auth_routes() -> Router<AppState> {
     Router::new()
-        .route("/register", post(auth::register))
         .route("/login", post(auth::login))
         .route("/refresh", post(auth::refresh))
+        .route("/logout", post(auth::logout))
+}
+
+fn user_routes() -> Router<AppState> {
+    Router::new().route("/register", post(user::register))
 }
