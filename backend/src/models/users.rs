@@ -17,7 +17,7 @@ pub struct RegisterUser {
     #[validate(length(min = 8, max = 30, message = "Password must be at least 8 characters"))]
     pub password: String,
 
-    #[serde(deserialize_with = "trimmed_option")]
+    #[serde(default, deserialize_with = "trimmed_option")]
     #[validate(length(max = 255, message = "Bio cannot exceed 255 characters"))]
     pub bio: Option<String>,
 
@@ -35,6 +35,29 @@ pub struct LoginUser {
 }
 
 #[derive(Serialize)]
-pub struct LoginResponse {
+pub struct LoginUserResponse {
     pub access_token: String,
+}
+
+#[derive(Debug, Validate, Deserialize)]
+pub struct UpdateUser {
+    #[serde(default, deserialize_with = "trimmed_option")]
+    #[validate(length(min = 3, max = 30, message = "Username must be 3-30 characters"))]
+    pub username: Option<String>,
+
+    #[validate(length(min = 8, max = 30, message = "Password must be at least 8 characters"))]
+    pub password: Option<String>,
+
+    #[serde(default, deserialize_with = "trimmed_option")]
+    #[validate(length(max = 255, message = "Bio cannot exceed 255 characters"))]
+    pub bio: Option<String>,
+
+    pub avatar: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdateUserResponse {
+    pub username: String,
+    pub bio: Option<String>,
+    pub avatar_key: Option<String>,
 }

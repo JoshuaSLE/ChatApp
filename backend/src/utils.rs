@@ -12,7 +12,10 @@ pub fn trimmed_string<'de, D: Deserializer<'de>>(d: D) -> Result<String, D::Erro
 
 pub fn trimmed_option<'de, D: Deserializer<'de>>(d: D) -> Result<Option<String>, D::Error> {
     let opt = Option::<String>::deserialize(d)?;
-    Ok(opt.map(|s| s.trim().to_string()))
+
+    let cleaned = opt.map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+
+    Ok(cleaned)
 }
 
 pub async fn password_hash(password: String) -> Result<String, password_hash::Error> {

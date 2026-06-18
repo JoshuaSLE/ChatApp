@@ -16,7 +16,7 @@ use validator::Validate;
 use crate::{
     AppState,
     errors::AppError,
-    models::users::{LoginResponse, LoginUser},
+    models::users::{LoginUserResponse, LoginUser},
     tokens::generate_tokens,
     utils::{password_hash, password_verify},
 };
@@ -74,7 +74,7 @@ pub async fn login(
 
     let mut response = (
         StatusCode::OK,
-        Json(LoginResponse {
+        Json(LoginUserResponse {
             access_token: token_response.access_token,
         }),
     )
@@ -154,7 +154,7 @@ pub async fn refresh(State(state): State<AppState>, jar: CookieJar) -> Result<Re
 
     let mut response = (
         StatusCode::OK,
-        Json(LoginResponse {
+        Json(LoginUserResponse {
             access_token: token_response.access_token,
         }),
     )
