@@ -4,7 +4,10 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_extra::extract::{
+    CookieJar,
+    cookie::{Cookie, SameSite},
+};
 use sqlx::query_as;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -13,7 +16,10 @@ use validator::Validate;
 use crate::{
     AppState,
     errors::AppError,
-    models::users::{LoginResponse, LoginUser, RegisterUser, UserResponse},
+    models::{
+        tokens::Claims,
+        users::{LoginResponse, LoginUser, RegisterUser, UserResponse},
+    },
     tokens::generate_tokens,
     utils::{password_hash, password_verify},
 };
@@ -53,7 +59,7 @@ pub async fn login(
 
     let user = sqlx::query!(
         r#"
-        SELECT id, password FROM users 
+        SELECT id, password FROM users
         WHERE username = $1
         "#,
         payload.username
@@ -71,6 +77,7 @@ pub async fn login(
 
     let refresh_token_hash = password_hash(token_response.refresh_token.clone()).await?;
     let refresh_expiry = OffsetDateTime::now_utc() + Duration::days(7);
+    
     sqlx::query!(
         r#"
         INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at)
@@ -84,7 +91,8 @@ pub async fn login(
     .execute(&state.pool)
     .await?;
 
-    let cookie = Cookie::build(("refresh_token", token_response.refresh_token))
+    let cookie_value = format!("{}:{}", user.id, token_response.refresh_token);
+    let cookie = Cookie::build(("refresh_token", cookie_value))
         .path("/auth/refresh")
         .secure(true)
         .http_only(true)

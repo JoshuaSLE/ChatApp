@@ -58,7 +58,6 @@ CHECK (body IS NOT NULL OR attachment_key IS NOT NULL);
 -- Indexes
 CREATE INDEX ON messages(room_id, created_at);
 CREATE INDEX ON messages(user_id);
-CREATE INDEX ON refresh_tokens(token_hash);
 CREATE INDEX ON refresh_tokens(user_id);
 CREATE INDEX ON room_members(room_id);
 CREATE INDEX ON users USING GIN (username gin_trgm_ops);
