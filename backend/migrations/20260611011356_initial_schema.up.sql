@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   bio VARCHAR(255),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_seen TIMESTAMPTZ,
+  online BOOLEAN NOT NULL DEFAULT FALSE,
   avatar_key TEXT
 );
 

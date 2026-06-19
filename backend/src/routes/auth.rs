@@ -86,6 +86,17 @@ pub async fn login(
     let cookie_header = cookie.to_string().parse().map_err(|_| AppError::Internal)?;
     response.headers_mut().insert(SET_COOKIE, cookie_header);
 
+    query!(
+        r#"
+        UPDATE users
+        SET online = TRUE
+        WHERE id = $1
+        "#,
+        user.id
+    )
+    .execute(&state.pool)
+    .await?;
+
     Ok(response)
 }
 
@@ -189,7 +200,7 @@ pub async fn logout(
     query!(
         r#"
         UPDATE users
-        SET last_seen = $1
+        SET online = FALSE, last_seen = $1
         WHERE id = $2
         "#,
         OffsetDateTime::now_utc(),

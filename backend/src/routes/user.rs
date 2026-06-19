@@ -16,8 +16,8 @@ use crate::{
     models::{
         tokens::Claims,
         users::{
-            MeUserResponse, RegisterUser, SearchUser, SearchUserResponse, UpdateUser,
-            UpdateUserResponse, UserResponse,
+            MeUserResponse, RegisterUser, SearchUser, SearchUserResponse, StatusUser,
+            StatusUserResponse, UpdateUser, UpdateUserResponse, UserResponse,
         },
     },
     utils::password_hash,
@@ -123,7 +123,7 @@ pub async fn me(
     let user = query_as!(
         MeUserResponse,
         r#"
-        SELECT username, bio, created_at, last_seen, avatar_key FROM users
+        SELECT username, bio, created_at, last_seen, online, avatar_key FROM users
         WHERE id = $1
         "#,
         user_id
@@ -158,4 +158,31 @@ pub async fn search(
     .await?;
 
     Ok((StatusCode::OK, Json(rows)))
+}
+
+pub async fn status(
+    State(state): State<AppState>,
+    claims: Claims,
+    Query(params): Query<StatusUser>,
+) -> Result<(StatusCode, Json<StatusUserResponse>), AppError> {
+    params.validate()?;
+
+    let user_id = claims.sub;
+
+    let user_status = query_as!(
+        StatusUserResponse,
+        r#"
+        SELECT online, last_seen
+        FROM users
+        WHERE id != $1 AND username = $2
+        "#,
+        user_id,
+        params.username
+    )
+    .fetch_optional(&state.pool)
+    .await?;
+
+    let user = user_status.ok_or(AppError::UserNotFound)?;
+
+    Ok((StatusCode::OK, Json(user)))
 }

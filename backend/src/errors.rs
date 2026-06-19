@@ -28,6 +28,9 @@ pub enum AppError {
     #[error("Token creation error")]
     TokenCreation(#[from] jsonwebtoken::errors::Error),
 
+    #[error("User not found")]
+    UserNotFound,
+
     #[error("Database error")]
     Database(#[from] sqlx::Error),
 
@@ -59,6 +62,8 @@ impl IntoResponse for AppError {
                 tracing::error!("JWT creation failed: {:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
+
+            AppError::UserNotFound => (StatusCode::NOT_FOUND, "User not found"),
 
             AppError::Database(e) => match e {
                 sqlx::Error::RowNotFound => {
