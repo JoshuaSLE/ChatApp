@@ -1,4 +1,5 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use validator::Validate;
 
 use crate::utils::trimmed_option;
@@ -10,4 +11,9 @@ pub struct CreateRoom {
     pub name: Option<String>,
     pub direct: bool,
     pub members: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreateRoomResponse {
+    pub room_id: Uuid,
 }
