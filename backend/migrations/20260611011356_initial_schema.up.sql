@@ -1,5 +1,3 @@
--- Extensions
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -52,14 +50,17 @@ CREATE TABLE IF NOT EXISTS room_members (
 );
 
 -- Alterations
+ALTER TABLE rooms
+ADD CONSTRAINT check_group_has_name
+CHECK (is_direct = TRUE OR name IS NOT NULL);
+
 ALTER TABLE messages
 ADD CONSTRAINT check_message_not_empty
 CHECK (body IS NOT NULL OR attachment_key IS NOT NULL);
 
 -- Indexes
-CREATE INDEX ON messages(room_id, created_at DESC);
-CREATE INDEX ON messages(user_id);
-CREATE INDEX ON refresh_tokens(id);
-CREATE INDEX ON refresh_tokens(user_id);
-CREATE INDEX ON room_members(room_id);
-CREATE INDEX ON users USING GIN (username gin_trgm_ops);
+CREATE INDEX idx_messages_room_id_created_at ON messages (room_id, created_at DESC);
+CREATE INDEX idx_messages_user_id ON messages(user_id);
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_room_members_room_id ON room_members(room_id);
+CREATE INDEX idx_room_members_user_id ON room_members(user_id);

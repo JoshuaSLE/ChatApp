@@ -7,6 +7,7 @@ use serde::Serialize;
 use crate::AppState;
 
 mod auth;
+mod room;
 mod user;
 
 #[derive(Serialize)]
@@ -30,6 +31,7 @@ pub fn app_routes() -> Router<AppState> {
         )
         .nest("/auth", auth_routes())
         .nest("/user", user_routes())
+        .nest("/rooms", room_routes())
 }
 
 fn auth_routes() -> Router<AppState> {
@@ -47,4 +49,8 @@ fn user_routes() -> Router<AppState> {
         .route("/me", get(user::me))
         .route("/search", get(user::search))
         .route("/status", get(user::status))
+}
+
+fn room_routes() -> Router<AppState> {
+    Router::new().route("/", post(room::create))
 }
