@@ -45,4 +45,5 @@ fn user_routes() -> Router<AppState> {
         .route("/update", patch(user::update))
         .route("/delete", delete(user::delete))
         .route("/me", get(user::me))
+        .route("/search", get(user::search))
 }

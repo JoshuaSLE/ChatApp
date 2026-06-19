@@ -1,6 +1,6 @@
 use axum::{
     Json,
-    extract::State,
+    extract::{Query, State},
     http::{StatusCode, header::SET_COOKIE},
     response::{IntoResponse, Response},
 };
@@ -15,7 +15,10 @@ use crate::{
     errors::AppError,
     models::{
         tokens::Claims,
-        users::{MeUserResponse, RegisterUser, UpdateUser, UpdateUserResponse, UserResponse},
+        users::{
+            MeUserResponse, RegisterUser, SearchUser, SearchUserResponse, UpdateUser,
+            UpdateUserResponse, UserResponse,
+        },
     },
     utils::password_hash,
 };
@@ -129,4 +132,30 @@ pub async fn me(
     .await?;
 
     Ok((StatusCode::OK, Json(user)))
+}
+
+pub async fn search(
+    State(state): State<AppState>,
+    claims: Claims,
+    Query(params): Query<SearchUser>,
+) -> Result<(StatusCode, Json<Vec<SearchUserResponse>>), AppError> {
+    params.validate()?;
+
+    let user_id = claims.sub;
+
+    let rows = query_as!(
+        SearchUserResponse,
+        r#"
+        SELECT username, bio FROM users
+        WHERE id != $1 AND username % $2
+        ORDER BY username <-> $2 ASC
+        LIMIT 15
+        "#,
+        user_id,
+        &params.username
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok((StatusCode::OK, Json(rows)))
 }

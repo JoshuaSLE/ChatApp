@@ -71,3 +71,20 @@ pub struct MeUserResponse {
     pub last_seen: Option<OffsetDateTime>,
     pub avatar_key: Option<String>,
 }
+
+#[derive(Debug, Validate, Deserialize)]
+pub struct SearchUser {
+    #[serde(deserialize_with = "trimmed_string")]
+    #[validate(length(
+        min = 3,
+        max = 30,
+        message = "Search query must be between 3 and 30 characters"
+    ))]
+    pub username: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SearchUserResponse {
+    pub username: String,
+    pub bio: Option<String>,
+}
