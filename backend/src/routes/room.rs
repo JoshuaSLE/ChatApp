@@ -1,4 +1,8 @@
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+};
 use sqlx::{query, query_as};
 use uuid::Uuid;
 use validator::Validate;
@@ -7,7 +11,7 @@ use crate::{
     AppState,
     errors::AppError,
     models::{
-        rooms::{CreateRoom, CreateRoomResponse},
+        rooms::{CreateRoom, CreateRoomResponse, ListRoomResponse},
         tokens::Claims,
     },
 };
@@ -22,7 +26,7 @@ pub async fn create(
 
     let mut member_ids: Vec<Uuid> = query!(
         r#"
-        SELECT id FROM users 
+        SELECT id FROM users
         WHERE username = ANY($1)
         "#,
         &payload.members[..]
@@ -72,6 +76,12 @@ pub async fn create(
     member_ids.sort();
     member_ids.dedup();
 
+    if member_ids.len() < 2 {
+        return Err(AppError::BadRequest(
+            "You cannot start a group message with yourself, add at least one more member".into(),
+        ));
+    }
+
     let room = CreateRoomResponse {
         room_id: Uuid::now_v7(),
     };
@@ -79,7 +89,7 @@ pub async fn create(
 
     query!(
         r#"
-        INSERT INTO rooms (id, name, is_direct, created_by) 
+        INSERT INTO rooms (id, name, is_direct, created_by)
         VALUES ($1, $2, $3, $4)
         "#,
         room.room_id,
@@ -103,5 +113,64 @@ pub async fn create(
     .await?;
 
     tx.commit().await?;
+
     Ok((StatusCode::CREATED, Json(room)))
+}
+
+pub async fn list(
+    State(state): State<AppState>,
+    claims: Claims,
+) -> Result<Json<Vec<ListRoomResponse>>, AppError> {
+    let user_id = claims.sub;
+
+    let rooms = query_as!(
+        ListRoomResponse,
+        r#"
+        SELECT
+            r.id AS room_id,
+            COALESCE(r.name, u.username) AS "room_name!",
+            r.is_direct AS "is_direct!"
+        FROM rooms r
+        JOIN room_members rm ON r.id = rm.room_id
+        LEFT JOIN room_members other_rm
+            ON r.id = other_rm.room_id AND other_rm.user_id != $1 AND r.is_direct = true
+        LEFT JOIN users u
+            ON other_rm.user_id = u.id
+        WHERE rm.user_id = $1
+        ORDER BY r.created_at DESC
+        "#,
+        user_id
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(Json(rooms))
+}
+
+pub async fn delete(
+    State(state): State<AppState>,
+    claims: Claims,
+    Path(room_id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let user_id = claims.sub;
+
+    let row = query!(
+        r#"
+        DELETE FROM rooms
+        WHERE id = $1 AND created_by = $2
+        RETURNING id
+        "#,
+        room_id,
+        user_id
+    )
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if row.is_none() {
+        return Err(AppError::BadRequest(
+            "Thread not found or you do not have permission to delete it".into(),
+        ));
+    }
+
+    Ok(StatusCode::NO_CONTENT)
 }

@@ -17,3 +17,10 @@ pub struct CreateRoom {
 pub struct CreateRoomResponse {
     pub room_id: Uuid,
 }
+
+#[derive(Debug, Serialize)]
+pub struct ListRoomResponse {
+    pub room_id: Uuid,
+    pub is_direct: bool,
+    pub room_name: String,
+}
