@@ -11,7 +11,7 @@ use crate::{
     AppState,
     errors::AppError,
     models::{
-        rooms::{CreateRoom, CreateRoomResponse, ListRoomResponse},
+        rooms::{CreateRoom, CreateRoomResponse, ListRoomResponse, UpdateRoom, UpdateRoomResponse},
         tokens::Claims,
     },
 };
@@ -173,4 +173,103 @@ pub async fn delete(
     }
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn update(
+    State(state): State<AppState>,
+    claims: Claims,
+    Path(room_id): Path<Uuid>,
+    Json(payload): Json<UpdateRoom>,
+) -> Result<(StatusCode, Json<UpdateRoomResponse>), AppError> {
+    payload.validate()?;
+    let creator_id = claims.sub;
+
+    let room_meta = query!(
+        "SELECT created_by, is_direct FROM rooms WHERE id = $1",
+        room_id
+    )
+    .fetch_optional(&state.pool)
+    .await?;
+
+    let Some(room) = room_meta else {
+        return Err(AppError::RoomNotFound);
+    };
+
+    if room.created_by != Some(creator_id) {
+        return Err(AppError::BadRequest(
+            "You do not have permission to manage this room".into(),
+        ));
+    }
+
+    if room.is_direct.unwrap_or(false) && !payload.members.is_empty() {
+        return Err(AppError::BadRequest(
+            "You cannot alter the members of a Direct Message thread".into(),
+        ));
+    }
+
+    let mut member_ids: Vec<Uuid> = query!(
+        "SELECT id FROM users WHERE username = ANY($1)",
+        &payload.members[..]
+    )
+    .fetch_all(&state.pool)
+    .await?
+    .into_iter()
+    .map(|row| row.id)
+    .collect();
+
+    if member_ids.len() != payload.members.len() {
+        return Err(AppError::UserNotFound);
+    }
+
+    member_ids.push(creator_id);
+    member_ids.sort();
+    member_ids.dedup();
+
+    if member_ids.len() < 2 {
+        return Err(AppError::BadRequest(
+            "Groups must have at least 2 distinct members".into(),
+        ));
+    }
+
+    let mut tx = state.pool.begin().await?;
+
+    if let Some(ref new_name) = payload.name {
+        query!(
+            "UPDATE rooms SET name = $1 WHERE id = $2",
+            new_name,
+            room_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    query!(
+        "DELETE FROM room_members WHERE room_id = $1 AND NOT (user_id = ANY($2::uuid[]))",
+        room_id,
+        &member_ids as &[Uuid]
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    query!(
+        r#"
+        INSERT INTO room_members (room_id, user_id)
+        SELECT $1, * FROM UNNEST($2::uuid[])
+        ON CONFLICT DO NOTHING
+        "#,
+        room_id,
+        &member_ids as &[Uuid]
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(UpdateRoomResponse {
+            name: payload.name,
+            members: payload.members,
+        }),
+    ))
 }

@@ -54,5 +54,6 @@ fn user_routes() -> Router<AppState> {
 fn room_routes() -> Router<AppState> {
     Router::new()
         .route("/", post(room::create).get(room::list))
+        .route("/update/{room_id}", patch(room::update))
         .route("/delete/{room_id}", delete(room::delete))
 }

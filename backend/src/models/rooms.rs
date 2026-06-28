@@ -24,3 +24,17 @@ pub struct ListRoomResponse {
     pub is_direct: bool,
     pub room_name: String,
 }
+
+#[derive(Debug, Validate, Deserialize)]
+pub struct UpdateRoom {
+    #[serde(default, deserialize_with = "trimmed_option")]
+    #[validate(length(min = 3, max = 30, message = "Name must be 3-30 characters"))]
+    pub name: Option<String>,
+    pub members: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdateRoomResponse {
+    pub name: Option<String>,
+    pub members: Vec<String>,
+}

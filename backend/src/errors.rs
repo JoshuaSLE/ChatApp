@@ -31,6 +31,9 @@ pub enum AppError {
     #[error("User not found")]
     UserNotFound,
 
+    #[error("Room not found")]
+    RoomNotFound,
+
     #[error("Bad Request: {0}")]
     BadRequest(String),
 
@@ -78,6 +81,8 @@ impl IntoResponse for AppError {
             }
 
             AppError::UserNotFound => (StatusCode::NOT_FOUND, "User not found".to_string()),
+
+            AppError::RoomNotFound => (StatusCode::NOT_FOUND, "Room not found".to_string()),
 
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
 
