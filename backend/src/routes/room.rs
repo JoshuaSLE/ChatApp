@@ -8,11 +8,8 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-    AppState,
-    errors::AppError,
-    models::{
-        rooms::{CreateRoom, CreateRoomResponse, ListRoomResponse, UpdateRoom, UpdateRoomResponse},
-        tokens::Claims,
+    AppState, errors::AppError, models::{
+        rooms::{CreateRoom, CreateRoomResponse, ListRoomResponse, MeRoomResponse, UpdateRoom, UpdateRoomResponse}, tokens::Claims,
     },
 };
 
@@ -175,6 +172,55 @@ pub async fn delete(
     Ok(StatusCode::NO_CONTENT)
 }
 
+pub async fn me(
+    State(state): State<AppState>,
+    claims: Claims,
+    Path(room_id): Path<Uuid>,
+) -> Result<(StatusCode, Json<MeRoomResponse>), AppError> {
+    let user_id = claims.sub;
+
+    let room_data = query!(
+        r#"
+        SELECT 
+            r.name,
+            r.is_direct,
+            EXISTS (
+                SELECT 1 FROM room_members 
+                WHERE room_id = $1 AND user_id = $2
+            ) AS "is_member!",
+            ARRAY_AGG(u.username) AS "members!"
+        FROM rooms r
+        JOIN room_members rm ON r.id = rm.room_id
+        JOIN users u ON rm.user_id = u.id
+        WHERE r.id = $1
+        GROUP BY r.id, r.name, r.is_direct
+        "#,
+        room_id,
+        user_id
+    )
+    .fetch_optional(&state.pool)
+    .await?;
+
+    let Some(room) = room_data else {
+        return Err(AppError::RoomNotFound);
+    };
+
+    if !room.is_member {
+        return Err(AppError::BadRequest(
+            "You do not have permission to view this room".into(),
+        ));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(MeRoomResponse {
+            name: room.name,
+            is_direct: room.is_direct.unwrap_or(false),
+            members: room.members,
+        }),
+    ))
+}
+
 pub async fn update(
     State(state): State<AppState>,
     claims: Claims,
@@ -185,7 +231,10 @@ pub async fn update(
     let creator_id = claims.sub;
 
     let room_meta = query!(
-        "SELECT created_by, is_direct FROM rooms WHERE id = $1",
+        r#"
+        SELECT created_by, is_direct FROM rooms
+        WHERE id = $1
+        "#,
         room_id
     )
     .fetch_optional(&state.pool)
@@ -235,7 +284,10 @@ pub async fn update(
 
     if let Some(ref new_name) = payload.name {
         query!(
-            "UPDATE rooms SET name = $1 WHERE id = $2",
+            r#"
+            UPDATE rooms SET name = $1
+            WHERE id = $2
+            "#,
             new_name,
             room_id
         )
@@ -244,7 +296,10 @@ pub async fn update(
     }
 
     query!(
-        "DELETE FROM room_members WHERE room_id = $1 AND NOT (user_id = ANY($2::uuid[]))",
+        r#"
+        DELETE FROM room_members
+        WHERE room_id = $1 AND NOT (user_id = ANY($2::uuid[]))
+        "#,
         room_id,
         &member_ids as &[Uuid]
     )

@@ -38,3 +38,10 @@ pub struct UpdateRoomResponse {
     pub name: Option<String>,
     pub members: Vec<String>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct MeRoomResponse {
+    pub name: Option<String>,
+    pub is_direct: bool,
+    pub members: Vec<String>,
+}
