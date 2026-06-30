@@ -8,8 +8,14 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-    AppState, errors::AppError, models::{
-        rooms::{CreateRoom, CreateRoomResponse, ListRoomResponse, MeRoomResponse, UpdateRoom, UpdateRoomResponse}, tokens::Claims,
+    AppState,
+    errors::AppError,
+    models::{
+        rooms::{
+            CreateRoom, CreateRoomResponse, ListRoomResponse, MeRoomResponse, UpdateRoom,
+            UpdateRoomResponse,
+        },
+        tokens::Claims,
     },
 };
 
@@ -181,11 +187,11 @@ pub async fn me(
 
     let room_data = query!(
         r#"
-        SELECT 
+        SELECT
             r.name,
             r.is_direct,
             EXISTS (
-                SELECT 1 FROM room_members 
+                SELECT 1 FROM room_members
                 WHERE room_id = $1 AND user_id = $2
             ) AS "is_member!",
             ARRAY_AGG(u.username) AS "members!"

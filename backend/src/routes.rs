@@ -7,6 +7,7 @@ use serde::Serialize;
 use crate::AppState;
 
 mod auth;
+mod message;
 mod room;
 mod user;
 
@@ -57,4 +58,9 @@ fn room_routes() -> Router<AppState> {
         .route("/update/{room_id}", patch(room::update))
         .route("/delete/{room_id}", delete(room::delete))
         .route("/me/{room_id}", get(room::me))
+        .nest("/{room_id}/messages", message_routes())
+}
+
+fn message_routes() -> Router<AppState> {
+    Router::new().route("/", post(message::create))
 }
