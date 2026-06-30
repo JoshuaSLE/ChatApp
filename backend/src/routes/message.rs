@@ -1,16 +1,16 @@
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
 };
-use sqlx::query;
+use sqlx::{query, query_as};
 use uuid::Uuid;
 
 use crate::{
     AppState,
     errors::AppError,
     models::{
-        messages::{CreateMessage, MessageResponse},
+        messages::{CreateMessage, GetMessage, GetMessageResponse, MessageResponse},
         tokens::Claims,
     },
 };
@@ -55,4 +55,45 @@ pub async fn create(
             attachment_type: payload.attachment_type,
         }),
     ))
+}
+
+pub async fn get(
+    State(state): State<AppState>,
+    claims: Claims,
+    Path(room_id): Path<Uuid>,
+    Query(params): Query<GetMessage>,
+) -> Result<(StatusCode, Json<Vec<GetMessageResponse>>), AppError> {
+    let user_id = claims.sub;
+    let limit = params.limit.unwrap_or(50).min(100);
+
+    let messages = query_as!(
+        GetMessageResponse,
+        r#"
+        SELECT
+            m.id,
+            u.username AS "username!",
+            m.body,
+            m.attachment_key,
+            m.attachment_type,
+            m.created_at AS "created_at!"
+        FROM messages m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.room_id = $1
+            AND EXISTS (
+                SELECT 1 FROM room_members
+                WHERE room_id = $1 AND user_id = $2
+            )
+            AND ($3::timestamptz IS NULL OR m.created_at < $3)
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT $4
+        "#,
+        room_id,
+        user_id,
+        params.before,
+        limit
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok((StatusCode::OK, Json(messages)))
 }

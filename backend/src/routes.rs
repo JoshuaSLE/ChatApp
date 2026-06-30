@@ -62,5 +62,5 @@ fn room_routes() -> Router<AppState> {
 }
 
 fn message_routes() -> Router<AppState> {
-    Router::new().route("/", post(message::create))
+    Router::new().route("/", post(message::create).get(message::get))
 }
