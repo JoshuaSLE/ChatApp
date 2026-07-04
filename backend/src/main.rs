@@ -1,9 +1,12 @@
 use axum::Router;
+use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
+use axum::http::{HeaderValue, Method};
 use dotenvy::dotenv;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use sqlx::{PgPool, migrate, postgres::PgPoolOptions};
 use std::env;
 use tokio::{net::TcpListener, signal};
+use tower_http::cors::CorsLayer;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -40,6 +43,8 @@ async fn main() {
     let address = format!("{host}:{port}");
     let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     let secret_bytes = hex::decode(secret).expect("Invalid hex in JWT_SECRET");
+    let allowed_origin =
+        env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_string());
 
     let pool = PgPoolOptions::new()
         .max_connections(10)
@@ -60,11 +65,20 @@ async fn main() {
 
     info!("Server is listening on http://{}", address);
 
-    let app = Router::new().merge(app_routes()).with_state(AppState {
-        pool,
-        jwt_encoding_key: EncodingKey::from_secret(&secret_bytes),
-        jwt_decoding_key: DecodingKey::from_secret(&secret_bytes),
-    });
+    let cors = CorsLayer::new()
+        .allow_origin(allowed_origin.parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_headers([AUTHORIZATION, CONTENT_TYPE])
+        .allow_credentials(true);
+
+    let app = Router::new()
+        .merge(app_routes())
+        .layer(cors)
+        .with_state(AppState {
+            pool,
+            jwt_encoding_key: EncodingKey::from_secret(&secret_bytes),
+            jwt_decoding_key: DecodingKey::from_secret(&secret_bytes),
+        });
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
