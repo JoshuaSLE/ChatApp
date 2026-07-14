@@ -96,8 +96,8 @@ pub async fn delete(State(state): State<AppState>, claims: Claims) -> Result<Res
         .await?;
 
     let removal_cookie = Cookie::build(("refresh_token", ""))
-        .path("/auth")
-        .secure(true)
+        .path("/api/auth")
+        .secure(state.cookie_secure)
         .http_only(true)
         .same_site(SameSite::Strict)
         .max_age(Duration::ZERO)

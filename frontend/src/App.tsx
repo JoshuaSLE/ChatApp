@@ -1,26 +1,14 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
-  withCredentials: true,
-});
+import client from "./api/client";
 
 function App() {
-  const [data, setData] = useState<unknown>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [health, setHealth] = useState(null);
 
   useEffect(() => {
-    api
-      .get("/")
-      .then((res) => setData(res.data))
-      .catch((err) => setError(err.message));
+    client.get("/health").then((res) => setHealth(res.data));
   }, []);
 
-  if (error) return <div>Error: {error}</div>;
-  if (!data) return <div>Loading...</div>;
-
-  return <pre>{JSON.stringify(data, null, 2)}</pre>;
+  return <pre>{JSON.stringify(health, null, 2)}</pre>;
 }
 
 export default App;

@@ -21,7 +21,7 @@ struct AppInfo {
 pub fn app_routes() -> Router<AppState> {
     Router::new()
         .route(
-            "/",
+            "/health",
             get(|| async {
                 Json(AppInfo {
                     name: env!("CARGO_PKG_NAME"),

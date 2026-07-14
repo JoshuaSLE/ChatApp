@@ -1,3 +1,5 @@
+-- Extentions
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (

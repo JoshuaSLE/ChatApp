@@ -1,12 +1,9 @@
 use axum::Router;
-use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
-use axum::http::{HeaderValue, Method};
 use dotenvy::dotenv;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use sqlx::{PgPool, migrate, postgres::PgPoolOptions};
 use std::env;
 use tokio::{net::TcpListener, signal};
-use tower_http::cors::CorsLayer;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -21,6 +18,7 @@ mod utils;
 #[derive(Clone)]
 pub struct AppState {
     pool: PgPool,
+    cookie_secure: bool,
     jwt_encoding_key: EncodingKey,
     jwt_decoding_key: DecodingKey,
 }
@@ -35,6 +33,9 @@ async fn main() {
 
     // INFO: Load in all the environment values
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let cookie_secure = env::var("COOKIE_SECURE")
+        .map(|v| v == "true")
+        .unwrap_or(true);
     let host = env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
     let port = env::var("SERVER_PORT")
         .unwrap_or_else(|_| "3000".to_string())
@@ -43,8 +44,6 @@ async fn main() {
     let address = format!("{host}:{port}");
     let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     let secret_bytes = hex::decode(secret).expect("Invalid hex in JWT_SECRET");
-    let allowed_origin =
-        env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_string());
 
     let pool = PgPoolOptions::new()
         .max_connections(10)
@@ -65,17 +64,11 @@ async fn main() {
 
     info!("Server is listening on http://{}", address);
 
-    let cors = CorsLayer::new()
-        .allow_origin(allowed_origin.parse::<HeaderValue>().unwrap())
-        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
-        .allow_headers([AUTHORIZATION, CONTENT_TYPE])
-        .allow_credentials(true);
-
     let app = Router::new()
-        .merge(app_routes())
-        .layer(cors)
+        .nest("/api", app_routes())
         .with_state(AppState {
             pool,
+            cookie_secure,
             jwt_encoding_key: EncodingKey::from_secret(&secret_bytes),
             jwt_decoding_key: DecodingKey::from_secret(&secret_bytes),
         });

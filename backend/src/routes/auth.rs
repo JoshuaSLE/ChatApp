@@ -68,8 +68,8 @@ pub async fn login(
 
     let cookie_value = format!("{}:{}", token_selector, token_response.refresh_token);
     let cookie = Cookie::build(("refresh_token", cookie_value))
-        .path("/auth")
-        .secure(true)
+        .path("/api/auth")
+        .secure(state.cookie_secure)
         .http_only(true)
         .same_site(SameSite::Strict)
         .max_age(Duration::days(7))
@@ -159,8 +159,8 @@ pub async fn refresh(State(state): State<AppState>, jar: CookieJar) -> Result<Re
 
     let cookie_value = format!("{}:{}", new_selector, token_response.refresh_token);
     let cookie = Cookie::build(("refresh_token", cookie_value))
-        .path("/auth")
-        .secure(true)
+        .path("/api/auth")
+        .secure(state.cookie_secure)
         .http_only(true)
         .same_site(SameSite::Strict)
         .max_age(Duration::days(7))
@@ -210,8 +210,8 @@ pub async fn logout(
     .await?;
 
     let removal_cookie = Cookie::build(("refresh_token", ""))
-        .path("/auth")
-        .secure(true)
+        .path("/api/auth")
+        .secure(state.cookie_secure)
         .http_only(true)
         .same_site(SameSite::Strict)
         .max_age(Duration::ZERO)
