@@ -1,10 +1,9 @@
+use crate::AppState;
 use axum::{
     Json, Router,
     routing::{delete, get, patch, post},
 };
 use serde::Serialize;
-
-use crate::AppState;
 
 mod auth;
 mod message;

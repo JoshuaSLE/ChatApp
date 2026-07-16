@@ -67,7 +67,7 @@ All protected paths validate JWT session credentials passed dynamically inside r
 
 ---
 
-## Containerization & Local Orchestration (Docker)
+<!--## Containerization & Local Orchestration (Docker)
 
 The workspace is split into lightweight, production-optimized container images using multi-stage pipelines to minimize deployment footprints.
 
@@ -93,4 +93,4 @@ DATABASE_URL="postgres://username:password@localhost:5432/chat_db"
 JWT_SECRET="your-ultra-secure-cryptographic-signing-key"
 HOST="127.0.0.1"
 PORT="8080"
-```
+```-->
